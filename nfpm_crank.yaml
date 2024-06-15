@@ -1,0 +1,36 @@
+name: crossplane
+arch: "${TARGETARCH}"
+platform: "${TARGETOS}"
+version: "${CROSSPLANE_VERSION}"
+section: "default"
+priority: "extra"
+maintainer: "Crossplane Maintainers <info@crossplane.io>"
+description: The official Crossplane CLI
+homepage: "https://crossplane.io"
+license: "Apache-2.0"
+contents:
+- src: crank
+  dst: /usr/bin/crossplane
+#rpm:
+#  signature:
+#    key_file: key.gpg
+#    key_id: 
+#deb:
+#  signature:
+#    # Signature method, either "dpkg-sig" or "debsign".
+#    # Defaults to "debsign"
+#    method: dpkg-sig
+#    # The type describes the signers role, possible values are "origin",
+#    # "maint" and "archive". If unset, the type defaults to "origin".
+#    type: origin
+#    key_file: key.gpg
+#    key_id: 
+#apk:
+#  signature:
+#    key_file: key.gpg
+#    # The name of the signing key. When verifying a package, the signature
+#    # is matched to the public key store in /etc/apk/keys/<key_name>.rsa.pub.
+#    # If unset, it defaults to the maintainer email address.
+#    key_name: origin
+#    # APK does not use pgp keys, so the key_id field is ignored.
+#    key_id: ignored

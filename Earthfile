@@ -35,6 +35,7 @@ multiplatform-build:
   BUILD +go-multiplatform-build
   BUILD +multiplatform-image
   BUILD +helm-build
+  BUILD +pkg-multiplatform-build
 
 # generate runs code generation. To keep builds fast, it doesn't run as part of
 # the build target. It's important to run it explicitly when code needs to be
@@ -274,6 +275,35 @@ helm-build:
   RUN helm dependency update
   RUN helm package --version ${CROSSPLANE_CHART_VERSION} --app-version ${CROSSPLANE_CHART_VERSION} -d output .
   SAVE ARTIFACT output AS LOCAL _output/charts
+
+# pkg-build builds packages for Linux distributions
+pkg-build:
+  ARG EARTHLY_GIT_SHORT_HASH
+  ARG EARTHLY_GIT_COMMIT_TIMESTAMP
+  ARG CROSSPLANE_VERSION=v0.0.0-${EARTHLY_GIT_COMMIT_TIMESTAMP}-${EARTHLY_GIT_SHORT_HASH}
+  ARG TARGETARCH
+  ARG TARGETOS
+  ARG NATIVEPLATFORM
+  FROM --platform=${NATIVEPLATFORM} goreleaser/nfpm
+  #RUN apk add envsubst
+  # maybe the --GOOS --GOARCH are not needed?
+  #COPY --platform=${TARGETPLATFORM} (+go-build/crank --GOOS=${TARGETOS} --GOARCH=${TARGETARCH})
+  COPY --platform=${TARGETPLATFORM} +go-build/crank .
+  COPY nfpm_crank.yaml .
+  #RUN cat nfpm_crank.yaml | envsubst > nfpm_crank_final.yaml
+  FOR pkg IN deb rpm apk
+    RUN nfpm pkg --config nfpm_crank.yaml --packager $pkg --target crank.${pkg}
+    SAVE ARTIFACT crank.${pkg} AS LOCAL _output/${pkg}/${TARGETOS}_${TARGETARCH}/crank.${pkg}
+  END
+
+# pkg-multiplatform-image builds packages for Linux distributions for all supported architectures
+pkg-multiplatform-build:
+  BUILD \
+    --platform=linux/amd64 \
+    --platform=linux/arm64 \
+    --platform=linux/arm \
+    --platform=linux/ppc64le \
+    +pkg-build
 
 # kubectl-setup is used by other targets to setup kubectl.
 kubectl-setup:
