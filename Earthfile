@@ -35,6 +35,7 @@ multiplatform-build:
   BUILD +go-multiplatform-build
   BUILD +multiplatform-image
   BUILD +helm-build
+  BUILD +pkg-multiplatform-build
 
 # generate runs code generation. To keep builds fast, it doesn't run as part of
 # the build target. It's important to run it explicitly when code needs to be
@@ -274,6 +275,88 @@ helm-build:
   RUN helm dependency update
   RUN helm package --version ${CROSSPLANE_CHART_VERSION} --app-version ${CROSSPLANE_CHART_VERSION} -d output .
   SAVE ARTIFACT output AS LOCAL _output/charts
+
+# lib-pkg-build is used by other targets for building Linux Distribution packages
+lib-pkg-build:
+  ARG EARTHLY_GIT_SHORT_HASH
+  ARG EARTHLY_GIT_COMMIT_TIMESTAMP
+  ARG CROSSPLANE_VERSION=v0.0.0-${EARTHLY_GIT_COMMIT_TIMESTAMP}-${EARTHLY_GIT_SHORT_HASH}
+  ARG TARGETARCH
+  ARG TARGETOS
+  ARG NATIVEPLATFORM
+  ARG PACKAGER
+  FROM --platform=${NATIVEPLATFORM} goreleaser/nfpm
+  COPY --platform=${TARGETPLATFORM} +go-build/crank .
+  COPY nfpm_crank.yaml .
+  LET CROSSPLANE_VERSION_ONLY_DIGITS=$(echo ${CROSSPLANE_VERSION} | sed -e 's/^v//')
+  LET DISTRO_ARCH=${TARGETARCH}
+  LET PKG_FILENAME=crank.${PACKAGER}
+  IF [ "$PACKAGER" = "deb" ]
+    SET PKG_FILENAME = crossplane_${CROSSPLANE_VERSION_ONLY_DIGITS}-1_${TARGETARCH}.deb
+  ELSE IF [ "$PACKAGER" = "rpm" ]
+    IF [ "$TARGETARCH" = "amd64" ]
+      SET DISTRO_ARCH = "x86_64"
+    ELSE IF [ "$TARGETARCH" = "arm64" ]
+      SET DISTRO_ARCH = "aarch64"
+    END
+    SET PKG_FILENAME=crossplane-${CROSSPLANE_VERSION_ONLY_DIGITS}-1.${DISTRO_ARCH}.rpm
+  ELSE IF [ "$PACKAGER" = "apk" ]
+    SET PKG_FILENAME=crossplane-${CROSSPLANE_VERSION_ONLY_DIGITS}-r0.apk
+  END
+  RUN nfpm pkg --config nfpm_crank.yaml --packager ${PACKAGER} --target crank.${PACKAGER}
+  SAVE ARTIFACT crank.${PACKAGER} AS LOCAL _output/${PACKAGER}/${TARGETOS}_${TARGETARCH}/${PKG_FILENAME}
+
+# deb-pkg-build builds a Deb package
+deb-pkg-build:
+  ARG TARGETPLATFORM
+  BUILD --platform=$TARGETPLATFORM +lib-pkg-build --PACKAGER=deb
+
+# deb-pkg-multiplatform-build builds Deb packages for all supported architectures
+deb-pkg-multiplatform-build:
+  BUILD \
+    --platform=linux/amd64 \
+    --platform=linux/arm64 \
+    --platform=linux/ppc64le \
+    +deb-pkg-build
+
+# rpm-pkg-build builds an RPM package
+rpm-pkg-build:
+  ARG TARGETPLATFORM
+  BUILD --platform=$TARGETPLATFORM +lib-pkg-build --PACKAGER=rpm
+
+# rpm-pkg-multiplatform-build builds RPM packages for all supported architectures
+rpm-pkg-multiplatform-build:
+  BUILD \
+    --platform=linux/amd64 \
+    --platform=linux/arm64 \
+    --platform=linux/ppc64le \
+    +rpm-pkg-build
+
+# apk-pkg-build builds an APK package
+apk-pkg-build:
+  ARG TARGETPLATFORM
+  BUILD --platform=$TARGETPLATFORM +lib-pkg-build --PACKAGER=apk
+
+# apk-pkg-multiplatform-build builds APK packages for all supported architectures
+apk-pkg-multiplatform-build:
+  BUILD \
+    --platform=linux/amd64 \
+    --platform=linux/arm64 \
+    --platform=linux/arm \
+    --platform=linux/ppc64le \
+    +apk-pkg-build
+
+# pkg-build builds packages for Linux distributions in all supported formats
+pkg-build:
+  BUILD +deb-pkg-build
+  BUILD +rpm-pkg-build
+  BUILD +apk-pkg-build
+
+# pkg-multiplatform-build builds packages for Linux distributions for all supported architectures
+pkg-multiplatform-build:
+  BUILD +deb-pkg-multiplatform-build
+  BUILD +rpm-pkg-multiplatform-build
+  BUILD +apk-pkg-multiplatform-build
 
 # kubectl-setup is used by other targets to setup kubectl.
 kubectl-setup:

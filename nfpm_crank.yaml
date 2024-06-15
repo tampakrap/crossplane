@@ -1,0 +1,13 @@
+name: crossplane
+arch: "${TARGETARCH}"
+platform: "${TARGETOS}"
+version: "${CROSSPLANE_VERSION}"
+section: "default"
+priority: "extra"
+maintainer: "Crossplane Maintainers <info@crossplane.io>"
+description: The official Crossplane CLI
+homepage: "https://crossplane.io"
+license: "Apache-2.0"
+contents:
+- src: crank
+  dst: /usr/bin/crossplane
