@@ -19,6 +19,7 @@ limitations under the License.
 package convert
 
 import (
+	"github.com/crossplane/crossplane/cmd/crank/beta/convert/claimtoxr"
 	"github.com/crossplane/crossplane/cmd/crank/beta/convert/compositionenvironment"
 	"github.com/crossplane/crossplane/cmd/crank/beta/convert/deploymentruntime"
 	"github.com/crossplane/crossplane/cmd/crank/beta/convert/pipelinecomposition"
@@ -26,6 +27,7 @@ import (
 
 // Cmd converts a Crossplane resource to a newer version or a different kind.
 type Cmd struct {
+	ClaimToXR              claimtoxr.Cmd              `cmd:"" help:"Convert a claim YAML file to an XR YAML file."`
 	DeploymentRuntime      deploymentruntime.Cmd      `cmd:"" help:"Convert a ControllerConfig to a DeploymentRuntimeConfig."`
 	PipelineComposition    pipelinecomposition.Cmd    `cmd:"" help:"Convert a Patch-and-Transform Composition to a Function Pipeline Composition."`
 	CompositionEnvironment compositionenvironment.Cmd `cmd:"" help:"Convert a Pipeline Composition to use function-environment-configs."`
@@ -37,10 +39,14 @@ func (c *Cmd) Help() string {
 This command converts a Crossplane resource to a newer version or a different kind.
 
 Currently supported conversions:
+* Claim YAML -> XR YAML
 * ControllerConfig -> DeploymentRuntimeConfig
 * Classic Compositions -> Function Pipeline Compositions
 
 Examples:
+  # Convert a claim YAML file to an XR YAML file
+  crossplane beta convert claim-to-xr claim.yaml
+
   # Write out a DeploymentRuntimeConfigFile from a ControllerConfig
   crossplane beta convert deployment-runtime cc.yaml -o drc.yaml
 
